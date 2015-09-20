@@ -1,0 +1,121 @@
+Activity Monitoring data
+========================
+
+1. Load data into R studio
+
+```{r, echo=TRUE}
+data <- read.csv(file = "activity.csv", header = TRUE, sep = ",")
+View(data)
+```
+
+2. Number of steps per day
+
+Aggregate number of steps taken per day
+```{r, echo=TRUE}
+data$Day <- as.list(data$date)
+data$Day <- as.numeric(data$Day)
+
+aggdata <- aggregate(data$steps , list(day = data$Day), sum)
+colnames(aggdata)[colnames(aggdata)=="x"] <- "cSteps"
+```
+
+Make a histogram of the number of steps taken per day
+
+```{r, echo=TRUE}
+hist(x = aggdata$cSteps, breaks = 20, col = "red", xlab = "Day", ylab = "frequency")
+```
+
+Calculate the mean and median of the steps
+
+```{r, echo=TRUE}
+mean(aggdata$cSteps, na.rm = TRUE)
+median(aggdata$cSteps, na.rm = TRUE)
+```
+
+3. Obtain average acitivty pattern
+
+```{r, echo=TRUE}
+mean_si <- aggregate(list(steps = data$steps), list(interval = data$interval), mean, na.rm = TRUE)
+
+library(ggplot2)
+ggplot(data = mean_si, aes(x = interval, y = steps)) + geom_line() + xlab("5-minute interval") + 
+    ylab("average number of steps taken")
+```
+
+Obtain the maximum average acitivty pattern
+
+```{r, echo=TRUE}
+mean_si[which.max(mean_si$steps),]
+```
+
+4. Inputting missing values
+
+Calculate and report the number of missing values/NAs in the dataset
+```{r, echo=TRUE}
+data$missing <- is.na(data$steps)
+table(data$missing)
+```
+
+Replace missing values with mean of 5 min interval
+
+```{r, echo=TRUE}
+for (i in 1:nrow(data)) {
+  if (data$missing[i] == TRUE) {
+    for (r in 1:nrow(mean_si)) { 
+      if (mean_si$interval[r] == data$interval[i]) {
+        data$steps[i] = mean_si$steps[r]
+        break
+      }
+    }
+  }
+}
+```
+
+create a new dataset that follows the strategy above, make a histogram of the number of steps taken
+each day, and report the mean and median of the new dataset.
+
+```{r, echo=TRUE}
+updata <- data
+
+updata_agg <- aggregate(updata$steps , list(day = updata$Day), sum)
+colnames(updata_agg)[colnames(updata_agg)=="x"] <- "upcSteps"
+
+
+hist(x = updata_agg$upcSteps, breaks = 20, col = "red", xlab = "Aggregated Steps")
+
+mean(updata_agg$upcSteps, na.rm = TRUE)
+median(updata_agg$upcSteps, na.rm = TRUE)
+```
+
+As can be observed, there was barely any impact on replacing the missing values with the mean of the 
+5 min intervals, suggesting that we can use the updated dataset for further analysis.
+
+5. Weekday and Weekend; Compare and Contrast
+
+Factor out the weekday and end in the dataset
+```{r,echo=TRUE}
+updata$date <- as.Date(updata$date)
+class(updata$date)
+updata$weekday <- weekdays(updata$date)
+
+
+for (i in 1:nrow(updata)){
+  if (updata$weekday[i] == "Saturday" | updata$weekday[i] == "Sunday"){
+    updata$weekday[i] = "weekend"} 
+  else {
+    updata$weekday[i] = "weekday"   
+    }
+}
+
+updata$weekday <- as.factor(updata$weekday)
+str(updata)
+```
+
+Create a plot that can compare the number of steps taken per 5 min interval for weekday vs weekend
+
+```{r, echo=TRUE}
+aggupdata <- aggregate(steps ~ interval + weekday, data = updata, mean)
+
+ggplot(aggupdata, aes(interval, steps)) + geom_line() + facet_grid(weekday ~ .) + 
+    xlab("5 minute interval") + ylab("sum of steps")
+```
